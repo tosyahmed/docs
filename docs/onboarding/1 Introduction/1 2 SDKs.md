@@ -3,7 +3,7 @@ title: SDKs
 slug: /introduction/sdks
 ---
 
-### SDKs
+# SDKs
 
 We provide SDKs to interact directly with your smart contracts in your favorite languages, including:
 

@@ -3,7 +3,7 @@ title: Dashboard
 slug: /introduction/dashboard
 ---
 
-### Dashboard
+# Dashboard
 
 thirdweb's dashboard is an easy-to-use tool letting you configure permissions, set platform and royalty fees, and share access to your contracts with your team members.
 
