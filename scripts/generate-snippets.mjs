@@ -4,6 +4,7 @@ const CONTRACTS = [
   "NFTCollection",
   "Edition",
   "Token",
+  "TokenDrop",
   "NFTDrop",
   "EditionDrop",
   "Marketplace",
