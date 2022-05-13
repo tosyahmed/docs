@@ -1,5 +1,5 @@
 ---
-title: Introduction
+title: Contracts
 slug: /introduction/contracts
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Introduction
+title: SDKs
 slug: /introduction/sdks
 ---
 
