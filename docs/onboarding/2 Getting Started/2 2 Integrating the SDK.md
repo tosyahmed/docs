@@ -1,5 +1,5 @@
 ---
-slug: /getting-started/your-first-app
+slug: /getting-started/integrating-the-sdk
 ---
 
 # Your First App

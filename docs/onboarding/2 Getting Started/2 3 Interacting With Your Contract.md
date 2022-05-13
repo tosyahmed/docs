@@ -1,5 +1,5 @@
 ---
-slug: /getting-started/integrate-sdks
+slug: /getting-started/integrate-with-your-contract
 ---
 
 # Integrating the SDK

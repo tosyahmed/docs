@@ -2,7 +2,7 @@
 slug: /getting-started/deploying-contracts
 ---
 
-# Deploying Contracts
+# Deploying Your First Contract
 
 ## Deploying via the thirdweb Dashboard
 
