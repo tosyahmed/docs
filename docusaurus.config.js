@@ -159,6 +159,10 @@ const config = {
         apiKey: "1d9ebc991c049c913bedcf3d50916922",
         indexName: "thirdweb",
         contextualSearch: false,
+        searchParameters: {
+          clickAnalytics: true,
+        },
+        clickAnalytics: true,
       },
       posthog: {
         apiKey: "phc_hKK4bo8cHZrKuAVXfXGpfNSLSJuucUnguAgt2j6dgSV",
