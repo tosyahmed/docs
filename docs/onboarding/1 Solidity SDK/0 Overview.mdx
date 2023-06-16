@@ -1,59 +1,106 @@
----
-slug: /solidity
-title: Overview
-hide_title: true
----
+// SPDX-License-Identifier: MIT
 
-import QuickstartCard from "@components/QuickstartCard";
-import OpenSourceInfo from "@components/OpenSourceInfo";
+pragma solidity >=0.8.0 <0.9.0;
 
-<p align="center">
-  <br />
-  <a href="https://thirdweb.com">
-    <img
-      src="https://github.com/thirdweb-dev/js/blob/main/packages/sdk/logo.svg?raw=true"
-      width="200"
-      alt=""
-    />
-  </a>
-  <br />
-</p>
-<h1 align="center">thirdweb Solidity SDK</h1>
+contract FriendsList {
+    struct Friend {
+        address walletAddress;
+        uint8 position;
+        address inviterAddress;
+    }
 
-Provides the tools needed to build custom smart contracts efficiently by offering a set of prebuilt [base contracts](/solidity/base-contracts)
-and a set of reusable components, or [extensions](/solidity/extensions), that can be integrated into your own smart contracts.
+    mapping(uint8 => Friend) public friends;
+    mapping(address => uint256) public userBalances;
 
-<OpenSourceInfo
-  repoName="contracts"
-  repoUrl="https://github.com/thirdweb-dev/contracts"
-/>
+    uint8 private constant listSize = 8;
+    uint8 private currentIndex = 8;
+    address private tokenContractAddress;
+    uint256 private constant donationAmount = 10 * 10**18;
+    uint256 private totalFriends = 0;
+    uint256 private nonInviterSubscribers = 0; // New variable to track non-inviter subscribers
+    address private burnAddress = 0x000000000000000000000000000000000000dEaD;
 
-## Base Contracts
+    event DonationReceived(address indexed friend, uint256 amount);
+    event NewFriendAdded(address indexed friend, address indexed inviter);
+    event FriendDropped(address indexed friend, address indexed dropper);
 
-[Base contracts](/solidity/base-contracts) are prebuilt smart contracts that you can build on top of or modify, such as the [ERC721Base](/solidity/base-contracts/erc721base) contract. These contracts work out of the box and do not require any functions to be implemented.
-They are built using [extensions](/solidity/extensions) and thus unlock intelligent features in the [SDKs](/sdk) and custom sections on the [Dashboard](/dashboard) to easily interact with your smart contract.
+    modifier validPosition(uint8 position) {
+        require(position >= 1 && position <= listSize, "Invalid position");
+        _;
+    }
 
-## Extensions
+    modifier onlyFirstFriends() {
+        require(totalFriends < 500, "Maximum number of friends reached");
+        _;
+    }
 
-[Extensions](/solidity/extensions) are Solidity interfaces that are recognizable by the Dashboard and unlock functionality in the SDKs. Common EIPs are also recognizable as extensions as our interfaces conform to industry standards.
-They are composable pieces of logic that can be added to smart contracts easily via [inheritance](/solidity/getting-started#inheritance-and-overriding-functions).
+    constructor(address _tokenContractAddress) {
+        tokenContractAddress = _tokenContractAddress;
+    }
 
-These extensions require varying levels of logic implementation\* in the inheriting smart contract. The three different types of extensions in this SDK are:
+    function joinList(address inviterAddress) external onlyFirstFriends {
+        require(friends[currentIndex].walletAddress == address(0), "List is full");
+        require(inviterAddress == address(0) || nonInviterSubscribers < 500, "Maximum number of non-inviter subscribers reached");
 
-- **Extension contracts**: These extensions are fully complete and do not require any logic to be implemented. By inheriting from these contracts, you add the functionality and therefore the logic to your inheriting smart contract.
-- **Abstract contracts**: These extensions require some of the logic to be implemented. Some of the functions on the extension depend on the use case and therefore require custom logic that is specific to your inheriting smart contract.
-- **Interfaces**: These extensions do not have an implementation. They provide the guidelines to write your own logic by giving you the functions, parameters and return types. This allows you to ensure that your contract conforms to this particular extension so that you can unlock features in the SDKs and Dashboard.
+        friends[currentIndex].walletAddress = msg.sender;
+        friends[currentIndex].position = currentIndex;
+        friends[currentIndex].inviterAddress = inviterAddress;
 
-\*implement = write the logic for the function with a matching function signature (matching name, parameters, visibility and return type)
+        emit NewFriendAdded(msg.sender, inviterAddress);
+        currentIndex--;
 
-![Extensions](/assets/extensions-graphic.png)
+        // Update user balance
+        userBalances[msg.sender] += donationAmount;
 
-## Why use the Solidity SDK?
+        // Perform compulsory withdrawal from new user
+        require(
+            IERC20(tokenContractAddress).transferFrom(msg.sender, address(this), donationAmount),
+            "Failed to transfer tokens from the friend"
+        );
 
-- Effortlessly integrate common smart contract features, including popular EIPs such as [ERC20](/solidity/extensions/erc20), [ERC721](/solidity/extensions/erc721), [ERC1155](/solidity/extensions/erc1155), [permissions](/solidity/extensions/permissions), [contract metadata](/solidity/extensions/contractmetadata), and more.
-- Simplify the development workflow, allowing you to focus on more intricate systems.
-- Using the [base contracts](/solidity/base-contracts) gives you a gas-optimized and audited foundation to build your projects.
-- Each extension you inherit unlocks smarter [SDKs](/sdk), custom admin [Dashboards](/dashboard) and tailored data feeds.
+        // Update user balance after withdrawal
+        userBalances[msg.sender] -= donationAmount;
 
-For example, if you deploy the [ERC721Base](/solidity/base-contracts/erc721base) contract which inherits from multiple extensions including [ERC721Mintable](/solidity/extensions/erc721mintable), you'll unlock the `mint` button in the dashboard and
-can use the [mint](/typescript/sdk.erc721mintable) function in the SDK; which automatically uploads and pins your metadata to [IPFS](/glossary/ipfs)!
+        // Distribute the amount to all friends
+        uint256 amountToDistribute = donationAmount / listSize;
+        for (uint8 i = currentIndex + 1; i <= listSize; i++) {
+            IERC20(tokenContractAddress).transfer(friends[i].walletAddress, amountToDistribute);
+            emit DonationReceived(friends[i].walletAddress, amountToDistribute);
+            friends[i].position--;
+        }
+
+        // Burn the remaining tokens
+        IERC20(tokenContractAddress).transfer(burnAddress, amountToDistribute * 2);
+
+        if (inviterAddress == address(0)) {
+            nonInviterSubscribers++;
+        }
+        
+        if (currentIndex == 1) {
+            address dropper = friends[1].walletAddress;
+            delete friends[1];
+            emit FriendDropped(dropper, msg.sender);
+        }
+    }
+
+   
+    function getFriend(uint8 position) external view validPosition(position) returns (address) {
+        return friends[position].walletAddress;
+    }
+
+    function transfer(address recipient, uint256 amount) external returns (bool) {
+        // Call the transfer function of the token contract to transfer the funds to the recipient
+        bool success = IERC20(tokenContractAddress).transfer(recipient, amount);
+        return success;
+    }
+}
+
+interface IERC20 {
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
+
+    function transfer(address recipient, uint256 amount) external returns (bool);
+}
